@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+    environment {
+        DOCKER_DEV_IMAGE = 'deepikanandagopal/dev:latest'
+        DOCKER_PROD_IMAGE = 'deepikanandagopal/prod:latest'
+        DOCKER_HUB_CREDENTIALS = 'dockerhub'
+    }
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: env.BRANCH_NAME, url: 'https://github.com/deepikanandagopal22/devops_build.git'
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    if (env.BRANCH_NAME == 'dev') {
+                        sh "docker build -t ${DOCKER_DEV_IMAGE} ."
+                    } else if (env.BRANCH_NAME == 'main') {
+                        sh "docker build -t ${DOCKER_PROD_IMAGE} ."
+                    }
+                }
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    docker.withRegistry('', DOCKER_HUB_CREDENTIALS) {
+                        if (env.BRANCH_NAME == 'dev') {
+                            sh "docker push ${DOCKER_DEV_IMAGE}"
+                        } else if (env.BRANCH_NAME == 'main') {
+                            sh "docker push ${DOCKER_PROD_IMAGE}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Build and Push Successful!'
+        }
+        failure {
+            echo 'Build Failed. Check the logs for details.'
+        }
+    }
+}
