@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git url: 'https://github.com/deepikanandagopal22/devops_build.git', branch: 'main', credentialsId: 'github'
+                git url: 'https://github.com/deepikanandagopal22/devops_build.git', credentialsId: 'github'
             }
         }
         stage('Build Docker Image') {
@@ -18,6 +18,8 @@ pipeline {
                         sh "docker build -t ${DOCKER_DEV_IMAGE} ."
                     } else if (env.BRANCH_NAME == 'main') {
                         sh "docker build -t ${DOCKER_PROD_IMAGE} ."
+                    } else {
+                        error "Unsupported branch: ${env.BRANCH_NAME}"
                     }
                 }
             }
@@ -35,13 +37,20 @@ pipeline {
                 }
             }
         }
+        stage('Deploy to Server') {
+            steps {
+                script {
+                    sh "docker run -d -p 9000:80 ${env.BRANCH_NAME == 'dev' ? DOCKER_DEV_IMAGE : DOCKER_PROD_IMAGE}"
+                }
+            }
+        }
     }
     post {
         success {
-            echo 'Build and Push Successful!'
+            echo 'Pipeline execution completed successfully.'
         }
         failure {
-            echo 'Build Failed. Check the logs for details.'
+            echo 'Pipeline execution failed. Check the logs.'
         }
     }
 }
